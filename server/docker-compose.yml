@@ -4,29 +4,41 @@ services:
   cockroachdb:
     image: cockroachdb/cockroach:latest-v23.1
     command: start-single-node --insecure
-    restart: "unless-stopped"
+    restart: 'unless-stopped'
     volumes:
       - data:/cockroach/cockroach-data
     ports:
-      - "26257:26257"
-      - "8080:8080"
+      - '26257:26257'
+      - '8080:8080'
+
+  # Build TypeScript match handler
+  nakama-builder:
+    build:
+      context: ./typescript
+      dockerfile: Dockerfile
+    volumes:
+      - ./typescript/build:/app/build
+    command: npm run build
 
   nakama:
     image: registry.heroiclabs.com/heroiclabs/nakama:3.20.0
     entrypoint:
-      - "/bin/sh"
-      - "-ecx"
+      - '/bin/sh'
+      - '-ecx'
       - >
         /nakama/nakama migrate up --database.address root@cockroachdb:26257 &&
-        exec /nakama/nakama --name nakama1 --database.address root@cockroachdb:26257 --logger.level DEBUG
-    restart: "unless-stopped"
+        exec /nakama/nakama --name nakama1 --database.address root@cockroachdb:26257 --logger.level DEBUG --runtime.js_entrypoint /nakama/data/build/index.js
+    restart: 'unless-stopped'
     links:
-      - "cockroachdb:db"
+      - 'cockroachdb:db'
     depends_on:
       - cockroachdb
+      - nakama-builder
+    volumes:
+      - ./typescript/build:/nakama/data/build:ro
     ports:
-      - "7349:7349"
-      - "7350:7350"
-      - "7351:7351"
+      - '7349:7349'
+      - '7350:7350'
+      - '7351:7351'
 volumes:
   data:

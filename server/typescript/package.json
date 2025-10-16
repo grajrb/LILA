@@ -1,0 +1,17 @@
+{
+  "name": "lila-tictactoe-server",
+  "version": "1.0.0",
+  "description": "LILA Tic-Tac-Toe server-side match handler for Nakama",
+  "main": "build/index.js",
+  "scripts": {
+    "build": "npx tsc",
+    "dev": "npx tsc --watch"
+  },
+  "dependencies": {
+    "nakama-runtime": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
