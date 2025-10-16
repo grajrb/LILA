@@ -38,7 +38,12 @@ function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkrunt
     matchTerminate
   });
 
-  logger.info('Tic-Tac-Toe match handler registered');
+  // Register RPC functions for leaderboard and stats
+  initializer.registerRpc('get_leaderboard', rpcGetLeaderboard);
+  initializer.registerRpc('get_player_stats', rpcGetPlayerStats);
+  initializer.registerRpc('update_player_stats', rpcUpdatePlayerStats);
+
+  logger.info('Tic-Tac-Toe match handler and RPC functions registered');
 }
 
 function matchInit(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, params: {[key: string]: string}): {state: nkruntime.MatchState, tickRate: number, label: string} {
@@ -214,10 +219,21 @@ function handleMove(gameState: GameState, message: nkruntime.MatchMessage, dispa
     newState.gameStatus = 'finished';
     newState.winner = winner === 'tie' ? 'tie' : message.sender.userId;
     
+    // Update player stats (in a real implementation, this would be done via RPC calls)
+    logger.info(`Game finished. Winner: ${newState.winner}, Players: ${Object.keys(newState.players).join(', ')}`);
+    
     dispatcher.broadcastMessage(OPCODES.GAME_OVER, JSON.stringify({
       winner: newState.winner,
       winningSymbol: winner === 'tie' ? null : playerSymbol,
-      board: newState.board
+      board: newState.board,
+      gameStats: {
+        totalMoves: newState.moveCount,
+        players: Object.keys(newState.players).map(id => ({
+          userId: id,
+          symbol: newState.players[id].symbol,
+          result: winner === 'tie' ? 'draw' : (id === newState.winner ? 'win' : 'loss')
+        }))
+      }
     }));
   } else {
     // Switch turns
@@ -269,6 +285,84 @@ function matchSignal(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkrun
 
 function matchTerminate(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, dispatcher: nkruntime.MatchDispatcher, tick: number, state: nkruntime.MatchState, graceSeconds: number): {state: nkruntime.MatchState} {
   return { state };
+}
+
+// RPC Functions for Leaderboard and Player Stats
+
+function rpcGetLeaderboard(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+  try {
+    // In a real implementation, you would query the database
+    // For this demo, return mock leaderboard data
+    const leaderboard = [
+      { userId: "user1", username: "Player1", wins: 15, losses: 3, draws: 2, rating: 1250 },
+      { userId: "user2", username: "Player2", wins: 12, losses: 5, draws: 3, rating: 1180 },
+      { userId: "user3", username: "Player3", wins: 8, losses: 7, draws: 5, rating: 1050 },
+      { userId: "user4", username: "Player4", wins: 5, losses: 10, draws: 2, rating: 920 },
+      { userId: "user5", username: "Player5", wins: 3, losses: 12, draws: 1, rating: 850 }
+    ];
+
+    return JSON.stringify({ leaderboard });
+  } catch (error) {
+    logger.error('Error getting leaderboard:', error);
+    return JSON.stringify({ error: 'Failed to get leaderboard' });
+  }
+}
+
+function rpcGetPlayerStats(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+  try {
+    const request = JSON.parse(payload);
+    const userId = request.userId;
+
+    // In a real implementation, query the database for user stats
+    // For this demo, return mock data
+    const stats = {
+      userId: userId,
+      username: `Player_${userId.substring(0, 8)}`,
+      totalGames: 25,
+      wins: 12,
+      losses: 8,
+      draws: 5,
+      winRate: 0.48,
+      rating: 1150,
+      rank: 42,
+      achievements: [
+        { id: 'first_win', name: 'First Victory', description: 'Win your first game' },
+        { id: 'streak_3', name: 'Hat Trick', description: 'Win 3 games in a row' }
+      ]
+    };
+
+    return JSON.stringify(stats);
+  } catch (error) {
+    logger.error('Error getting player stats:', error);
+    return JSON.stringify({ error: 'Failed to get player stats' });
+  }
+}
+
+function rpcUpdatePlayerStats(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+  try {
+    const request = JSON.parse(payload);
+    const { userId, result } = request; // result: 'win', 'loss', 'draw'
+
+    logger.info(`Updating stats for user ${userId}: ${result}`);
+
+    // In a real implementation:
+    // 1. Update user stats in database
+    // 2. Recalculate rating using ELO or similar system
+    // 3. Update leaderboard rankings
+    // 4. Check for new achievements
+
+    const updatedStats = {
+      userId: userId,
+      result: result,
+      newRating: 1150 + (result === 'win' ? 25 : result === 'loss' ? -20 : 0),
+      message: `Stats updated: ${result}`
+    };
+
+    return JSON.stringify(updatedStats);
+  } catch (error) {
+    logger.error('Error updating player stats:', error);
+    return JSON.stringify({ error: 'Failed to update player stats' });
+  }
 }
 
 // Register the module
