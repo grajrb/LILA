@@ -1,0 +1,32 @@
+# docker-compose.yml
+version: '3.8'
+services:
+  cockroachdb:
+    image: cockroachdb/cockroach:latest-v23.1
+    command: start-single-node --insecure
+    restart: "unless-stopped"
+    volumes:
+      - data:/cockroach/cockroach-data
+    ports:
+      - "26257:26257"
+      - "8080:8080"
+
+  nakama:
+    image: registry.heroiclabs.com/heroiclabs/nakama:3.20.0
+    entrypoint:
+      - "/bin/sh"
+      - "-ecx"
+      - >
+        /nakama/nakama migrate up --database.address root@cockroachdb:26257 &&
+        exec /nakama/nakama --name nakama1 --database.address root@cockroachdb:26257 --logger.level DEBUG
+    restart: "unless-stopped"
+    links:
+      - "cockroachdb:db"
+    depends_on:
+      - cockroachdb
+    ports:
+      - "7349:7349"
+      - "7350:7350"
+      - "7351:7351"
+volumes:
+  data:
