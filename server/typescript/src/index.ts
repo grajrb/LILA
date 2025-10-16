@@ -365,5 +365,5 @@ function rpcUpdatePlayerStats(ctx: nkruntime.Context, logger: nkruntime.Logger, 
   }
 }
 
-// Register the module
-InitModule;
+// This ensures the module is properly initialized by Nakama
+// The InitModule function will be called by Nakama's runtime

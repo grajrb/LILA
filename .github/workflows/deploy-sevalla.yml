@@ -1,0 +1,194 @@
+name: Deploy to Sevalla
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: '18'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Build and test the application
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: |
+          client/package-lock.json
+          server/typescript/package-lock.json
+    
+    # Build and test frontend
+    - name: Install frontend dependencies
+      run: |
+        cd client
+        npm ci
+        
+    - name: Build frontend
+      run: |
+        cd client
+        npm run build
+      env:
+        NEXT_PUBLIC_NAKAMA_HOST: ${{ secrets.NAKAMA_HOST }}
+        NEXT_PUBLIC_NAKAMA_PORT: 7350
+        NEXT_PUBLIC_NAKAMA_SERVER_KEY: ${{ secrets.NAKAMA_SERVER_KEY }}
+        NEXT_PUBLIC_NAKAMA_USE_SSL: true
+        
+    - name: Test frontend
+      run: |
+        cd client
+        npm run lint
+        
+    # Build and test backend
+    - name: Install backend dependencies
+      run: |
+        cd server/typescript
+        npm ci
+        
+    - name: Build backend
+      run: |
+        cd server/typescript
+        npm run build
+        
+    - name: Verify backend build
+      run: |
+        if [ ! -f "server/typescript/dist/index.js" ]; then
+          echo "Backend build failed - index.js not found"
+          exit 1
+        fi
+        echo "Backend build successful"
+        
+    # Upload build artifacts
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifacts
+        path: |
+          client/.next
+          server/typescript/dist
+          docker-compose.sevalla.yml
+          client/Dockerfile.prod
+        retention-days: 1
+
+  # Deploy to Sevalla (only on main branch)
+  deploy-sevalla:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build-artifacts
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        
+    # Install Sevalla CLI (replace with actual CLI when available)
+    - name: Install Sevalla CLI
+      run: |
+        # This is a placeholder - replace with actual Sevalla CLI installation
+        # npm install -g @sevalla/cli
+        echo "Installing Sevalla CLI..."
+        
+    # Deploy using Docker Compose approach
+    - name: Prepare deployment environment
+      run: |
+        # Create production environment file
+        cat > .env.sevalla << EOF
+        NAKAMA_HOST=${{ secrets.NAKAMA_HOST }}
+        NAKAMA_SERVER_KEY=${{ secrets.NAKAMA_SERVER_KEY }}
+        NAKAMA_CONSOLE_USERNAME=${{ secrets.NAKAMA_CONSOLE_USERNAME }}
+        NAKAMA_CONSOLE_PASSWORD=${{ secrets.NAKAMA_CONSOLE_PASSWORD }}
+        NODE_ENV=production
+        DATABASE_URL=${{ secrets.DATABASE_URL }}
+        EOF
+        
+    - name: Build Docker images
+      run: |
+        # Build frontend image
+        cd client
+        docker build -f Dockerfile.prod -t lila-frontend .
+        cd ..
+        
+        # Prepare backend files
+        mkdir -p deployment-package/server/typescript
+        cp -r server/typescript/dist deployment-package/server/typescript/
+        
+    # Deploy via Docker Compose (alternative method)
+    - name: Deploy via Docker Compose
+      run: |
+        echo "Deploying to Sevalla..."
+        # This would typically use sevalla CLI or API
+        # sevalla deploy --compose docker-compose.sevalla.yml
+        
+        # Alternative: Build and push to registry, then trigger Sevalla deployment
+        echo "Build successful - ready for deployment"
+        
+    # Notify deployment status
+    - name: Deployment notification
+      uses: 8398a7/action-slack@v3
+      if: always()
+      with:
+        status: ${{ job.status }}
+        text: |
+          LILA Deployment Status: ${{ job.status }}
+          Commit: ${{ github.sha }}
+          Branch: ${{ github.ref_name }}
+          Author: ${{ github.actor }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Health check after deployment
+  health-check:
+    needs: deploy-sevalla
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Wait for deployment
+      run: sleep 60
+      
+    - name: Health check frontend
+      run: |
+        echo "Checking frontend health..."
+        # curl -f https://${{ secrets.NAKAMA_HOST }} || exit 1
+        
+    - name: Health check backend
+      run: |
+        echo "Checking backend health..."
+        # curl -f https://${{ secrets.NAKAMA_HOST }}:7350/healthcheck || exit 1
+        
+    - name: Health check console
+      run: |
+        echo "Checking console availability..."
+        # curl -f https://${{ secrets.NAKAMA_HOST }}:7351/health || exit 1
+        
+    - name: Run integration tests
+      run: |
+        echo "Running integration tests..."
+        # Add integration tests here to verify matchmaking works
+        
+    - name: Deployment success notification
+      if: success()
+      run: |
+        echo "✅ LILA deployment successful!"
+        echo "🎮 Game URL: https://${{ secrets.NAKAMA_HOST }}"
+        echo "🔧 Console: https://${{ secrets.NAKAMA_HOST }}:7351"

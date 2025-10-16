@@ -1,5 +1,4 @@
 # docker-compose.yml
-version: '3.8'
 services:
   cockroachdb:
     image: cockroachdb/cockroach:latest-v23.1
@@ -16,29 +15,36 @@ services:
     build:
       context: ./typescript
       dockerfile: Dockerfile
+    command: sh -c "npm run build && tail -f /dev/null"
     volumes:
-      - ./typescript/build:/app/build
-    command: npm run build
+      - matchcode:/app/dist
+    healthcheck:
+      test: ['CMD', 'sh', '-c', 'test -f /app/dist/index.js']
+      interval: 5s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
 
   nakama:
     image: registry.heroiclabs.com/heroiclabs/nakama:3.20.0
     entrypoint:
       - '/bin/sh'
-      - '-ecx'
-      - >
-        /nakama/nakama migrate up --database.address root@cockroachdb:26257 &&
-        exec /nakama/nakama --name nakama1 --database.address root@cockroachdb:26257 --logger.level DEBUG --runtime.js_entrypoint /nakama/data/build/index.js
+      - '-ec'
+      - /nakama/nakama migrate up --database.address root@cockroachdb:26257 && exec /nakama/nakama --name nakama1 --database.address root@cockroachdb:26257 --logger.level DEBUG --runtime.path /nakama/data/modules --runtime.js_entrypoint index.js
     restart: 'unless-stopped'
     links:
       - 'cockroachdb:db'
     depends_on:
-      - cockroachdb
-      - nakama-builder
+      cockroachdb:
+        condition: service_started
+      nakama-builder:
+        condition: service_healthy
     volumes:
-      - ./typescript/build:/nakama/data/build:ro
+      - matchcode:/nakama/data/modules:ro
     ports:
       - '7349:7349'
       - '7350:7350'
       - '7351:7351'
 volumes:
   data:
+  matchcode:

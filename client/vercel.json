@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "name": "lila-tictactoe",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/"
+    }
+  ],
+  "env": {
+    "NEXT_PUBLIC_NAKAMA_HOST": "@nakama-host",
+    "NEXT_PUBLIC_NAKAMA_PORT": "@nakama-port",
+    "NEXT_PUBLIC_NAKAMA_SERVER_KEY": "@nakama-server-key",
+    "NEXT_PUBLIC_NAKAMA_USE_SSL": "@nakama-use-ssl"
+  }
+}

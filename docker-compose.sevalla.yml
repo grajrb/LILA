@@ -1,0 +1,63 @@
+# Sevalla Deployment Configuration
+# Complete LILA Tic-Tac-Toe Application
+
+version: '3.8'
+
+services:
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.prod
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_NAKAMA_HOST=${NAKAMA_HOST}
+      - NEXT_PUBLIC_NAKAMA_PORT=7350
+      - NEXT_PUBLIC_NAKAMA_SERVER_KEY=${NAKAMA_SERVER_KEY}
+      - NEXT_PUBLIC_NAKAMA_USE_SSL=true
+    depends_on:
+      - nakama
+    restart: unless-stopped
+
+  # Database
+  cockroachdb:
+    image: cockroachdb/cockroach:latest-v23.1
+    command: start-single-node --insecure
+    restart: unless-stopped
+    volumes:
+      - cockroach_data:/cockroach/cockroach-data
+    ports:
+      - "26257:26257"
+      - "8080:8080"
+    environment:
+      - COCKROACH_DATABASE=nakama
+      - COCKROACH_USER=root
+
+  # Game Server (Nakama)
+  nakama:
+    image: registry.heroiclabs.com/heroiclabs/nakama:3.20.0
+    entrypoint:
+      - '/bin/sh'
+      - '-ec'
+      - /nakama/nakama migrate up --database.address root@cockroachdb:26257 && exec /nakama/nakama --name nakama1 --database.address root@cockroachdb:26257 --logger.level INFO --runtime.path /nakama/data/modules --runtime.js_entrypoint index.js
+    restart: unless-stopped
+    depends_on:
+      - cockroachdb
+    volumes:
+      - ./server/typescript/dist:/nakama/data/modules:ro
+    ports:
+      - "7349:7349"  # gRPC
+      - "7350:7350"  # HTTP
+      - "7351:7351"  # Console
+    environment:
+      - NAKAMA_DATABASE_ADDRESS=root@cockroachdb:26257
+      - NAKAMA_LOGGER_LEVEL=INFO
+      - NAKAMA_SERVER_KEY=${NAKAMA_SERVER_KEY:-defaultkey}
+      - NAKAMA_CONSOLE_USERNAME=${NAKAMA_CONSOLE_USERNAME:-admin}
+      - NAKAMA_CONSOLE_PASSWORD=${NAKAMA_CONSOLE_PASSWORD:-password}
+
+volumes:
+  cockroach_data:
+    driver: local

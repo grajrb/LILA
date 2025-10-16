@@ -147,7 +147,70 @@ Frontend will be available at `http://localhost:3000`
      - `NEXT_PUBLIC_NAKAMA_USE_SSL`: `true`
    - Deploy!
 
-## 🔧 **Configuration**
+## � **Production Deployment**
+
+### **Complete Sevalla Deployment (Frontend + Backend)**
+
+Deploy the entire application to Sevalla with one command:
+
+```bash
+# Windows
+deploy-sevalla.bat
+
+# Linux/Mac
+chmod +x deploy-sevalla.sh
+./deploy-sevalla.sh
+```
+
+This will:
+1. Build the TypeScript match handler
+2. Build the Next.js frontend for production
+3. Create a deployment package with all necessary files
+4. Generate environment configuration templates
+
+**Manual Deployment Steps:**
+
+1. **Prepare Environment Variables**
+   ```bash
+   # Edit .env.sevalla with your production values
+   NAKAMA_HOST=your-app.sevalla.com
+   NAKAMA_SERVER_KEY=your-secure-32-char-key
+   NAKAMA_CONSOLE_USERNAME=admin
+   NAKAMA_CONSOLE_PASSWORD=your-secure-password
+   ```
+
+2. **Deploy via Sevalla CLI**
+   ```bash
+   npm install -g @sevalla/cli
+   sevalla login
+   sevalla deploy --compose docker-compose.sevalla.yml
+   ```
+
+3. **Deploy via Sevalla Dashboard**
+   - Upload `docker-compose.sevalla.yml`
+   - Set environment variables
+   - Deploy
+
+**Post-deployment URLs:**
+- Game: `https://your-app.sevalla.com`
+- Admin Console: `https://your-app.sevalla.com:7351`
+- API: `https://your-app.sevalla.com:7350`
+
+### **Alternative: Separate Deployments**
+
+**Frontend (Vercel):**
+```bash
+cd client
+vercel deploy --prod
+```
+
+**Backend (Sevalla):**
+```bash
+cd deployment
+# Follow sevalla-complete-deployment.md guide
+```
+
+## 🔧 **Development Workflow**
 
 ### **Environment Variables**
 ```env
