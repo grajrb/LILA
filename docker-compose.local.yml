@@ -1,0 +1,49 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:13
+    container_name: lila-postgres-local
+    environment:
+      POSTGRES_DB: nakama
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: localdb
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U root -d nakama']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  nakama:
+    image: registry.heroiclabs.com/heroiclabs/nakama:3.20.0
+    container_name: lila-nakama-local
+    entrypoint:
+      - '/bin/sh'
+      - '-ecx'
+      - >
+        /nakama/nakama migrate up --database.address postgres://root:localdb@postgres:5432/nakama &&
+        exec /nakama/nakama --name nakama1 --database.address postgres://root:localdb@postgres:5432/nakama --logger.level INFO --session.token_expiry_sec 7200 --socket.server_key defaultkey --console.username admin --console.password password
+    restart: unless-stopped
+    links:
+      - 'postgres:db'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./server/typescript/build:/nakama/data/modules:ro
+    ports:
+      - '7350:7349' # API port
+      - '7351:7350' # gRPC port
+      - '7352:7351' # Console port
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:7349/v2/healthcheck']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  postgres_data:
