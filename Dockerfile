@@ -2,7 +2,7 @@
 FROM registry.heroiclabs.com/heroiclabs/nakama:3.20.0
 
 # Install required tools
-RUN apt-get update && apt-get install -y postgresql-client curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y postgresql-client curl bash && rm -rf /var/lib/apt/lists/*
 
 # Create modules directory
 RUN mkdir -p /nakama/data/modules
@@ -17,12 +17,8 @@ RUN chmod +x /nakama/railway-start.sh
 # Set working directory
 WORKDIR /nakama
 
-# Expose port (Railway will set PORT env var)
-EXPOSE $PORT
+# Expose standard ports (Railway will handle port mapping)
+EXPOSE 7349 7350 7351
 
-# Health check on dynamic port
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:$PORT/healthcheck || exit 1
-
-# Use startup script
-CMD ["./railway-start.sh"]
+# Default command (Railway will override with startCommand)
+CMD ["/nakama/nakama", "--name", "nakama1", "--logger.level", "INFO", "--runtime.path", "/nakama/data/modules", "--runtime.js_entrypoint", "index.js"]
