@@ -1,4 +1,4 @@
-# Standard Dockerfile for Railway deployment
+# Railway Dockerfile for Nakama deployment
 FROM registry.heroiclabs.com/heroiclabs/nakama:3.20.0
 
 # Create modules directory
@@ -17,5 +17,5 @@ EXPOSE 7349 7350 7351
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:7350/healthcheck || exit 1
 
-# Default command
+# Default command - Railway will override this with startCommand
 CMD ["/nakama/nakama", "--name", "nakama1", "--logger.level", "INFO", "--runtime.path", "/nakama/data/modules", "--runtime.js_entrypoint", "index.js"]
