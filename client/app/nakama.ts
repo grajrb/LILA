@@ -10,8 +10,11 @@ const useSSL = process.env.NEXT_PUBLIC_NAKAMA_USE_SSL === "true";
 console.log(`Nakama Client Config: ${host}:${port} (SSL: ${useSSL})`);
 console.log(`Server Key: ${serverKey.substring(0, 8)}...`);
 
+// For Railway deployments over HTTPS, use port 7350 (not 443) with SSL
+const finalPort = useSSL && host.includes('.railway.app') ? "7350" : port;
+
 // Create client with timeout settings
-const client = new Client(serverKey, host, port, useSSL, 30000, true);
+const client = new Client(serverKey, host, finalPort, useSSL, 30000, true);
 
 // Test connection on startup
 const testConnection = async () => {
