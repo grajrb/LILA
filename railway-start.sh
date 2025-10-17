@@ -40,7 +40,7 @@ fi
 
 echo "✅ Database setup completed"
 
-# Start Nakama server with CORS enabled for frontend connections
+# Start Nakama server
 echo "🎮 Starting Nakama server..."
 exec /nakama/nakama \
   --name nakama1 \
@@ -50,9 +50,4 @@ exec /nakama/nakama \
   --runtime.js_entrypoint index.js \
   --socket.server_key "${NAKAMA_SERVER_KEY:-defaultkey}" \
   --console.username "${NAKAMA_CONSOLE_USERNAME:-admin}" \
-  --console.password "${NAKAMA_CONSOLE_PASSWORD:-password}" \
-  --socket.port "$PORT" \
-  --console.port $((PORT + 1)) \
-  --socket.max_message_size_bytes 4096 \
-  --socket.write_timeout_ms 10000 \
-  --socket.read_timeout_ms 10000
+  --console.password "${NAKAMA_CONSOLE_PASSWORD:-password}"
