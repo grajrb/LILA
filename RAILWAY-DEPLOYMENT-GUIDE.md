@@ -18,7 +18,7 @@
 
 - ✅ GitHub account with LILA repository
 - ✅ Railway account (we'll create this)
-- ✅ Your secure key: `6OOnwb0crwcs2OaPVy6vtofcMUtH7zin`
+- ✅ Generate a secure 32-character key (we'll show you how)
 
 ---
 
@@ -82,9 +82,9 @@ CMD ["/nakama/nakama", "--name", "nakama1", "--logger.level", "INFO", "--runtime
 
 ```bash
 # Railway Environment Variables
-NAKAMA_SERVER_KEY=6OOnwb0crwcs2OaPVy6vtofcMUtH7zin
+NAKAMA_SERVER_KEY=your-secure-32-character-key-here
 NAKAMA_CONSOLE_USERNAME=admin
-NAKAMA_CONSOLE_PASSWORD=YourSecurePassword123!
+NAKAMA_CONSOLE_PASSWORD=your-secure-password-here
 NAKAMA_LOGGER_LEVEL=INFO
 NODE_ENV=production
 PORT=7350
@@ -132,9 +132,9 @@ cd ../..
 3. **Add these variables**:
 
 ```bash
-NAKAMA_SERVER_KEY=6OOnwb0crwcs2OaPVy6vtofcMUtH7zin
+NAKAMA_SERVER_KEY=your-secure-32-character-key-here
 NAKAMA_CONSOLE_USERNAME=admin
-NAKAMA_CONSOLE_PASSWORD=YourSecurePassword123!
+NAKAMA_CONSOLE_PASSWORD=your-secure-password-here
 NAKAMA_LOGGER_LEVEL=INFO
 NODE_ENV=production
 PORT=7350
@@ -172,7 +172,7 @@ Update `client/.env.local`:
 # Production environment for Railway backend
 NEXT_PUBLIC_NAKAMA_HOST=your-app.up.railway.app
 NEXT_PUBLIC_NAKAMA_PORT=443
-NEXT_PUBLIC_NAKAMA_SERVER_KEY=6OOnwb0crwcs2OaPVy6vtofcMUtH7zin
+NEXT_PUBLIC_NAKAMA_SERVER_KEY=your-secure-32-character-key-here
 NEXT_PUBLIC_NAKAMA_USE_SSL=true
 ```
 
@@ -205,7 +205,7 @@ npm start
    ```
    NEXT_PUBLIC_NAKAMA_HOST = your-app.up.railway.app
    NEXT_PUBLIC_NAKAMA_PORT = 443
-   NEXT_PUBLIC_NAKAMA_SERVER_KEY = 6OOnwb0crwcs2OaPVy6vtofcMUtH7zin
+   NEXT_PUBLIC_NAKAMA_SERVER_KEY = your-secure-32-character-key-here
    NEXT_PUBLIC_NAKAMA_USE_SSL = true
    ```
 
@@ -385,4 +385,4 @@ Your LILA Tic-Tac-Toe game is now deployed with:
 **Your Game**: `https://your-project.vercel.app`
 **Your API**: `https://your-app.up.railway.app`
 
-**Environment Key**: `6OOnwb0crwcs2OaPVy6vtofcMUtH7zin`
+**Environment Key**: Generate your own secure 32-character key

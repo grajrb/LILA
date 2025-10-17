@@ -132,6 +132,23 @@ sevalla-*.log
 *.p12
 *.pfx
 
+# Sensitive configuration files
+.env.local
+.env.production.local
+.env.development.local
+.env.test.local
+vercel.env
+railway.env
+sevalla.env
+
+# Deployment scripts with secrets
+deploy-with-secrets.*
+*-secrets.*
+
+# Database exports
+*.sql
+*.dump
+
 # Local configuration
 config.local.json
 settings.local.json

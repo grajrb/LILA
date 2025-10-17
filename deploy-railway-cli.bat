@@ -54,14 +54,16 @@ echo.
 
 REM Set environment variables
 echo 🔧 Setting environment variables...
-railway variables set NAKAMA_SERVER_KEY=6OOnwb0crwcs2OaPVy6vtofcMUtH7zin
-railway variables set NAKAMA_CONSOLE_USERNAME=admin
-railway variables set NAKAMA_CONSOLE_PASSWORD=YourSecurePassword123!
-railway variables set NAKAMA_LOGGER_LEVEL=INFO
-railway variables set NODE_ENV=production
-railway variables set PORT=7350
-
-echo ✅ Environment variables set
+echo Please set these manually in Railway dashboard for security:
+echo   NAKAMA_SERVER_KEY=your-secure-32-character-key
+echo   NAKAMA_CONSOLE_USERNAME=admin  
+echo   NAKAMA_CONSOLE_PASSWORD=your-secure-password
+echo   NAKAMA_LOGGER_LEVEL=INFO
+echo   NODE_ENV=production
+echo   PORT=7350
+echo.
+echo ⚠️ For security, we're not setting secrets via CLI
+echo ➡️ Go to Railway dashboard to set environment variables manually
 echo.
 
 REM Deploy the application
