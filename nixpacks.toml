@@ -1,0 +1,12 @@
+[phases.build]
+dependsOn = ["setup"]
+cmds = [
+    "echo 'Building Nakama match handler...'",
+    "cd server/typescript && npm install && npm run build"
+]
+
+[phases.setup]
+nixPkgs = ["nodejs", "npm"]
+
+[start]
+cmd = "./start.sh"

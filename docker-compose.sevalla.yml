@@ -10,7 +10,7 @@ services:
       context: ./client
       dockerfile: Dockerfile.prod
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_NAKAMA_HOST=${NAKAMA_HOST}
@@ -29,8 +29,8 @@ services:
     volumes:
       - cockroach_data:/cockroach/cockroach-data
     ports:
-      - "26257:26257"
-      - "8080:8080"
+      - '26257:26257'
+      - '8080:8080'
     environment:
       - COCKROACH_DATABASE=nakama
       - COCKROACH_USER=root
@@ -48,9 +48,9 @@ services:
     volumes:
       - ./server/typescript/dist:/nakama/data/modules:ro
     ports:
-      - "7349:7349"  # gRPC
-      - "7350:7350"  # HTTP
-      - "7351:7351"  # Console
+      - '7349:7349' # gRPC
+      - '7350:7350' # HTTP
+      - '7351:7351' # Console
     environment:
       - NAKAMA_DATABASE_ADDRESS=root@cockroachdb:26257
       - NAKAMA_LOGGER_LEVEL=INFO
