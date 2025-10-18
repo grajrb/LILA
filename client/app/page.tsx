@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Session, Socket } from "@heroiclabs/nakama-js";
+import { Session, Socket, Notification } from "@heroiclabs/nakama-js";
 import nakamaClient from "./nakama";
 import Leaderboard from "./leaderboard";
 
@@ -53,10 +53,10 @@ export default function HomePage() {
 
       try {
         const newSession = await nakamaClient.authenticateDevice(deviceId, true);
-        const newSocket = nakamaClient.createSocket(false);
+        const newSocket = nakamaClient.createSocket();
         
         // Set up connection event handlers before connecting
-        newSocket.onnotification = (notification) => {
+        newSocket.onnotification = (notification: Notification) => {
           console.log("Socket notification:", notification);
         };
 
