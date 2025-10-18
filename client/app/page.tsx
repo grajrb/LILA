@@ -53,6 +53,12 @@ export default function HomePage() {
 
       try {
         const newSession = await nakamaClient.authenticateDevice(deviceId, true);
+        
+        // Log WebSocket connection details for debugging
+        console.log(`🔗 WebSocket Connection Details:`);
+        console.log(`   - Protocol: ${nakamaClient.getWebSocketProtocol()}`);
+        console.log(`   - URL: ${nakamaClient.getWebSocketUrl()}`);
+        
         const newSocket = nakamaClient.createSocket();
         
         // Set up connection event handlers before connecting
@@ -65,16 +71,54 @@ export default function HomePage() {
           setSocketConnected(false);
         };
 
+        newSocket.onerror = (error: Event | Error) => {
+          console.error("WebSocket error:", error);
+          
+          // Check for Mixed Content Policy violations
+          if (error && typeof error === 'object') {
+            const errorMessage = (error as Error).message || error.toString();
+            if (errorMessage.includes('Mixed Content') || 
+                errorMessage.includes('insecure WebSocket') ||
+                errorMessage.includes('wss://') ||
+                errorMessage.includes('HTTPS')) {
+              setErrorMessage('Security Error: Cannot connect insecure WebSocket from HTTPS page. Please check server configuration.');
+            } else {
+              setErrorMessage(`Connection Error: ${errorMessage}`);
+            }
+          } else {
+            setErrorMessage('WebSocket connection failed. Please check your network connection.');
+          }
+        };
+
         await newSocket.connect(newSession, true);
         
         // Mark as connected after successful connection
         setSocketConnected(true);
-        console.log("Socket connected successfully");
+        console.log("✅ WebSocket connected successfully");
 
         setSession(newSession);
         setSocket(newSocket);
       } catch (error) {
-        console.error("Authentication failed:", error);
+        console.error("Authentication or connection failed:", error);
+        
+        // Enhanced error handling for WebSocket connection issues
+        if (error && typeof error === 'object') {
+          const errorMessage = (error as Error).message || error.toString();
+          
+          if (errorMessage.includes('Mixed Content') || 
+              errorMessage.includes('insecure WebSocket') ||
+              errorMessage.includes('blocked:mixed-content')) {
+            setErrorMessage('🔒 Security Error: Cannot use insecure WebSocket connection from HTTPS page. The connection has been automatically upgraded to use secure WebSocket (WSS).');
+          } else if (errorMessage.includes('WebSocket')) {
+            setErrorMessage(`🔌 WebSocket Error: ${errorMessage}`);
+          } else if (errorMessage.includes('authenticate')) {
+            setErrorMessage('🔑 Authentication Error: Failed to authenticate with server.');
+          } else {
+            setErrorMessage(`❌ Connection Error: ${errorMessage}`);
+          }
+        } else {
+          setErrorMessage('❌ Failed to connect to server. Please check your network connection and try again.');
+        }
       }
     };
 
