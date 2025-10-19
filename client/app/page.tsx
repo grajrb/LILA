@@ -5,6 +5,10 @@ import { useState, useEffect } from "react";
 import { Session, Socket, Notification } from "@heroiclabs/nakama-js";
 import nakamaClient from "./nakama";
 import Leaderboard from "./leaderboard";
+import ConnectionStatus from "./components/connection-status";
+import DebugPanel from "./components/debug-panel";
+import { ErrorClassifier, ErrorClassification, ConnectionError } from "./utils/error-classifier";
+import { ConnectionMonitor } from "./utils/connection-monitor";
 
 interface Player {
   symbol: 'X' | 'O';
@@ -41,87 +45,130 @@ export default function HomePage() {
   const [isSearching, setIsSearching] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [connectionError, setConnectionError] = useState<ErrorClassification | null>(null);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const [lastConnectionTime, setLastConnectionTime] = useState<Date | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionMonitor] = useState(() => new ConnectionMonitor());
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const [currentAttemptId, setCurrentAttemptId] = useState<string | null>(null);
+
+  // Helper function to handle connection errors with classification
+  const handleConnectionError = (error: Error | string, context: 'websocket' | 'authentication' | 'matchmaking' | 'general', url?: string, protocol?: string) => {
+    // Mark the current attempt as failed in the monitor
+    if (currentAttemptId) {
+      const errorObj = typeof error === 'string' ? new Error(error) : error;
+      connectionMonitor.markFailure(currentAttemptId, errorObj, { context, url, protocol });
+      setCurrentAttemptId(null);
+    }
+
+    const connectionError: ConnectionError = {
+      originalError: error,
+      context,
+      timestamp: new Date(),
+      url,
+      protocol
+    };
+    
+    const classification = ErrorClassifier.classifyError(connectionError);
+    setConnectionError(classification);
+    setConnectionAttempts(prev => prev + 1);
+    
+    // Also set the legacy error message for backward compatibility
+    setErrorMessage(classification.userMessage);
+    
+    console.error(`Connection error (${context}):`, {
+      classification,
+      originalError: error,
+      url,
+      protocol
+    });
+  };
+
+  // Helper function to clear errors
+  const clearErrors = () => {
+    setConnectionError(null);
+    setErrorMessage('');
+  };
+
+  // Retry connection function
+  const retryConnection = async () => {
+    clearErrors();
+    setIsConnecting(true);
+    
+    try {
+      await authenticate();
+    } catch (error) {
+      // Error will be handled by authenticate function
+    } finally {
+      setIsConnecting(false);
+    }
+  };
 
   // 1. Authenticate and connect socket on component mount
+  const authenticate = async () => {
+    let deviceId = localStorage.getItem("deviceId");
+    if (!deviceId) {
+      deviceId = crypto.randomUUID();
+      localStorage.setItem("deviceId", deviceId);
+    }
+
+    try {
+      setIsConnecting(true);
+      clearErrors();
+      
+      const newSession = await nakamaClient.authenticateDevice(deviceId, true);
+      
+      // Log WebSocket connection details for debugging
+      console.log(`🔗 WebSocket Connection Details:`);
+      console.log(`   - Protocol: ${nakamaClient.getWebSocketProtocol()}`);
+      console.log(`   - URL: ${nakamaClient.getWebSocketUrl()}`);
+      
+      const newSocket = nakamaClient.createSocket();
+      const wsUrl = nakamaClient.getWebSocketUrl();
+      const wsProtocol = nakamaClient.getWebSocketProtocol();
+      
+      // Set up connection event handlers before connecting
+      newSocket.onnotification = (notification: Notification) => {
+        console.log("Socket notification:", notification);
+      };
+
+      newSocket.ondisconnect = () => {
+        console.log("Socket disconnected");
+        setSocketConnected(false);
+        setLastConnectionTime(null);
+      };
+
+      newSocket.onerror = (error: Event | Error) => {
+        console.error("WebSocket error:", error);
+        
+        const errorObj = error instanceof Error ? error : new Error(error.toString());
+        handleConnectionError(errorObj, 'websocket', wsUrl, wsProtocol);
+      };
+
+      await newSocket.connect(newSession, true);
+      
+      // Mark as connected after successful connection
+      setSocketConnected(true);
+      setLastConnectionTime(new Date());
+      clearErrors();
+      console.log("✅ WebSocket connected successfully");
+
+      setSession(newSession);
+      setSocket(newSocket);
+    } catch (error) {
+      console.error("Authentication or connection failed:", error);
+      
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      const context = errorObj.message.toLowerCase().includes('authenticate') ? 'authentication' : 'websocket';
+      
+      handleConnectionError(errorObj, context, nakamaClient.getWebSocketUrl(), nakamaClient.getWebSocketProtocol());
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
   useEffect(() => {
-    const authenticate = async () => {
-      let deviceId = localStorage.getItem("deviceId");
-      if (!deviceId) {
-        deviceId = crypto.randomUUID();
-        localStorage.setItem("deviceId", deviceId);
-      }
-
-      try {
-        const newSession = await nakamaClient.authenticateDevice(deviceId, true);
-        
-        // Log WebSocket connection details for debugging
-        console.log(`🔗 WebSocket Connection Details:`);
-        console.log(`   - Protocol: ${nakamaClient.getWebSocketProtocol()}`);
-        console.log(`   - URL: ${nakamaClient.getWebSocketUrl()}`);
-        
-        const newSocket = nakamaClient.createSocket();
-        
-        // Set up connection event handlers before connecting
-        newSocket.onnotification = (notification: Notification) => {
-          console.log("Socket notification:", notification);
-        };
-
-        newSocket.ondisconnect = () => {
-          console.log("Socket disconnected");
-          setSocketConnected(false);
-        };
-
-        newSocket.onerror = (error: Event | Error) => {
-          console.error("WebSocket error:", error);
-          
-          // Check for Mixed Content Policy violations
-          if (error && typeof error === 'object') {
-            const errorMessage = (error as Error).message || error.toString();
-            if (errorMessage.includes('Mixed Content') || 
-                errorMessage.includes('insecure WebSocket') ||
-                errorMessage.includes('wss://') ||
-                errorMessage.includes('HTTPS')) {
-              setErrorMessage('Security Error: Cannot connect insecure WebSocket from HTTPS page. Please check server configuration.');
-            } else {
-              setErrorMessage(`Connection Error: ${errorMessage}`);
-            }
-          } else {
-            setErrorMessage('WebSocket connection failed. Please check your network connection.');
-          }
-        };
-
-        await newSocket.connect(newSession, true);
-        
-        // Mark as connected after successful connection
-        setSocketConnected(true);
-        console.log("✅ WebSocket connected successfully");
-
-        setSession(newSession);
-        setSocket(newSocket);
-      } catch (error) {
-        console.error("Authentication or connection failed:", error);
-        
-        // Enhanced error handling for WebSocket connection issues
-        if (error && typeof error === 'object') {
-          const errorMessage = (error as Error).message || error.toString();
-          
-          if (errorMessage.includes('Mixed Content') || 
-              errorMessage.includes('insecure WebSocket') ||
-              errorMessage.includes('blocked:mixed-content')) {
-            setErrorMessage('🔒 Security Error: Cannot use insecure WebSocket connection from HTTPS page. The connection has been automatically upgraded to use secure WebSocket (WSS).');
-          } else if (errorMessage.includes('WebSocket')) {
-            setErrorMessage(`🔌 WebSocket Error: ${errorMessage}`);
-          } else if (errorMessage.includes('authenticate')) {
-            setErrorMessage('🔑 Authentication Error: Failed to authenticate with server.');
-          } else {
-            setErrorMessage(`❌ Connection Error: ${errorMessage}`);
-          }
-        } else {
-          setErrorMessage('❌ Failed to connect to server. Please check your network connection and try again.');
-        }
-      }
-    };
-
     authenticate();
   }, []);
 
@@ -175,17 +222,19 @@ export default function HomePage() {
   const findMatch = async () => {
     if (socket && socketConnected) {
       setIsSearching(true);
-      setErrorMessage('');
+      clearErrors();
       try {
         await socket.addMatchmaker("tictactoe", 2, 2);
         console.log("Searching for a match...");
       } catch (error) {
         console.error('Matchmaking failed:', error);
         setIsSearching(false);
-        setErrorMessage('Failed to find match');
+        
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        handleConnectionError(errorObj, 'matchmaking');
       }
     } else {
-      setErrorMessage('Not connected to server. Please wait or refresh the page.');
+      handleConnectionError(new Error('Not connected to server'), 'general');
     }
   };
 
@@ -258,23 +307,30 @@ export default function HomePage() {
       <h1 className="text-4xl font-bold mb-8">LILA Tic-Tac-Toe</h1>
       
       {/* Connection Status */}
-      {!session && (
+      {!session && !connectionError && (
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
           <p className="text-xl">Connecting to server...</p>
         </div>
       )}
 
-      {/* Socket Connection Status */}
-      {session && (
-        <div className={`mb-4 px-4 py-2 rounded-lg ${socketConnected ? 'bg-green-600' : 'bg-yellow-600'}`}>
-          {socketConnected ? '🟢 Connected' : '🟡 Connecting...'}
-        </div>
-      )}
+      {/* Enhanced Connection Status */}
+      <div className="mb-6 max-w-md mx-auto">
+        <ConnectionStatus
+          isConnected={socketConnected}
+          isConnecting={isConnecting || (!session && !connectionError)}
+          error={connectionError}
+          onRetry={retryConnection}
+          onDismissError={clearErrors}
+          showDebugInfo={process.env.NODE_ENV === 'development'}
+          connectionAttempts={connectionAttempts}
+          lastConnectionTime={lastConnectionTime}
+        />
+      </div>
 
-      {/* Error Message */}
-      {errorMessage && (
-        <div className="bg-red-600 text-white p-4 rounded-lg mb-4 max-w-md text-center">
+      {/* Legacy Error Message (for backward compatibility) */}
+      {errorMessage && !connectionError && (
+        <div className="bg-red-600 text-white p-4 rounded-lg mb-4 max-w-md text-center mx-auto">
           {errorMessage}
           <button 
             onClick={() => setErrorMessage('')}
