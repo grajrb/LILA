@@ -221,7 +221,8 @@ export class EnvironmentConfig {
     // Validate server key
     if (!this.config.serverKey || this.config.serverKey.trim() === '') {
       errors.push('NEXT_PUBLIC_NAKAMA_SERVER_KEY is required');
-    } else if (this.config.serverKey === 'defaultkey' && this.isProduction()) {
+    } else if (this.config.serverKey === 'defaultkey' && this.isProduction() && typeof window !== 'undefined') {
+      // Only validate in browser runtime, not during build
       errors.push('Using default server key in production is not secure. Please set a proper NEXT_PUBLIC_NAKAMA_SERVER_KEY');
     }
 
@@ -240,7 +241,8 @@ export class EnvironmentConfig {
     if (errors.length > 0) {
       const errorMessage = `Nakama configuration validation failed:\n${errors.map(e => `  - ${e}`).join('\n')}`;
       
-      if (this.isProduction()) {
+      // Only throw errors in browser runtime, not during build
+      if (this.isProduction() && typeof window !== 'undefined') {
         throw new Error(errorMessage);
       } else {
         console.error('❌ Configuration Errors:');

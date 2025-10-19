@@ -407,7 +407,7 @@ export default function HomePage() {
           onDismissError={clearErrors}
           showDebugInfo={process.env.NODE_ENV === 'development'}
           connectionAttempts={connectionAttempts}
-          lastConnectionTime={lastConnectionTime}
+          lastConnectionTime={lastConnectionTime || undefined}
         />
         
         {/* Enhanced Connection Status Indicator */}
