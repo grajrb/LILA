@@ -40,6 +40,7 @@ function InitModule(ctx, logger, nk, initializer) {
     logger.info('Tic-Tac-Toe match handler and RPC functions registered');
 }
 function matchInit(ctx, logger, nk, params) {
+    logger.info('🎮 NEW MATCH CREATED! Match initialized with params:', params);
     var gameState = {
         board: Array(9).fill(null),
         currentPlayer: '',

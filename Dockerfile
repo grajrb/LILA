@@ -17,8 +17,8 @@ RUN chmod +x /nakama/railway-start.sh
 # Set working directory
 WORKDIR /nakama
 
-# Expose standard ports (Railway will handle port mapping)
-EXPOSE 7349 7350 7351
+# Expose Railway port
+EXPOSE $PORT
 
 # Default command (Railway will override with startCommand)
 CMD ["/nakama/nakama", "--name", "nakama1", "--logger.level", "INFO", "--runtime.path", "/nakama/data/modules", "--runtime.js_entrypoint", "index.js"]

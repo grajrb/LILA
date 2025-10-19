@@ -47,6 +47,8 @@ function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkrunt
 }
 
 function matchInit(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, params: {[key: string]: string}): {state: nkruntime.MatchState, tickRate: number, label: string} {
+  logger.info('🎮 NEW MATCH CREATED! Match initialized with params:', params);
+  
   const gameState: GameState = {
     board: Array(9).fill(null),
     currentPlayer: '',

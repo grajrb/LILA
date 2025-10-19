@@ -293,7 +293,9 @@ export default function HomePage() {
       setCurrentAttemptId(matchAttemptId);
       
       try {
-        await socket.addMatchmaker("tictactoe", 2, 2);
+        // Try simplified matchmaking
+        console.log("Attempting matchmaking...");
+        await socket.addMatchmaker("*", 2, 2);
         console.log("Searching for a match...");
         
         // Mark matchmaking request success (not the full match, just the request)
