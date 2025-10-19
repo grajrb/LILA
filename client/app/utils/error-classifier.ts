@@ -29,9 +29,15 @@ export class ErrorClassifier {
    */
   public static classifyError(connectionError: ConnectionError): ErrorClassification {
     const { originalError, context, url, protocol } = connectionError;
+    
+    // Handle null/undefined errors
+    if (!originalError) {
+      return this.createUnknownErrorClassification('Unknown error occurred');
+    }
+    
     const errorMessage = typeof originalError === 'string' 
       ? originalError 
-      : originalError.message || originalError.toString();
+      : (originalError.message !== undefined ? originalError.message : originalError.toString());
     
     const lowerErrorMessage = errorMessage.toLowerCase();
     
@@ -197,7 +203,7 @@ export class ErrorClassifier {
         userMessage: '🚫 Connection Refused: Unable to connect to the game server. The server might be down or unreachable.',
         technicalMessage: errorMessage,
         retryable: true,
-        suggestedAction: 'Please try again in a few moments. If the issue continues, the server may be under maintenance.'
+        suggestedAction: 'Please try again in a few moments. If the issue continues, the server might be down or under maintenance.'
       };
     }
     

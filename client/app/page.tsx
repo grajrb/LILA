@@ -4,8 +4,11 @@
 import { useState, useEffect } from "react";
 import { Session, Socket, Notification } from "@heroiclabs/nakama-js";
 import nakamaClient from "./nakama";
+import { WebSocketManager } from "./websocket-manager";
 import Leaderboard from "./leaderboard";
 import ConnectionStatus from "./components/connection-status";
+import ConnectionStatusIndicator, { ConnectionState } from "./components/connection-status-indicator";
+import WebSocketErrorBoundary from "./components/websocket-error-boundary";
 import DebugPanel from "./components/debug-panel";
 import { ErrorClassifier, ErrorClassification, ConnectionError } from "./utils/error-classifier";
 import { ConnectionMonitor } from "./utils/connection-monitor";
@@ -52,6 +55,9 @@ export default function HomePage() {
   const [connectionMonitor] = useState(() => new ConnectionMonitor());
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   const [currentAttemptId, setCurrentAttemptId] = useState<string | null>(null);
+  const [webSocketManager] = useState(() => new WebSocketManager(nakamaClient));
+  const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
+  const [retryCountdown, setRetryCountdown] = useState(0);
 
   // Helper function to handle connection errors with classification
   const handleConnectionError = (error: Error | string, context: 'websocket' | 'authentication' | 'matchmaking' | 'general', url?: string, protocol?: string) => {
@@ -73,6 +79,7 @@ export default function HomePage() {
     const classification = ErrorClassifier.classifyError(connectionError);
     setConnectionError(classification);
     setConnectionAttempts(prev => prev + 1);
+    setConnectionState('error');
     
     // Also set the legacy error message for backward compatibility
     setErrorMessage(classification.userMessage);
@@ -89,12 +96,50 @@ export default function HomePage() {
   const clearErrors = () => {
     setConnectionError(null);
     setErrorMessage('');
+    if (connectionState === 'error') {
+      setConnectionState('disconnected');
+    }
+  };
+
+  // Helper function to mark successful connection
+  const handleConnectionSuccess = (context: 'websocket' | 'authentication' | 'matchmaking', additionalInfo?: Record<string, any>) => {
+    if (currentAttemptId) {
+      connectionMonitor.markSuccess(currentAttemptId, additionalInfo);
+      setCurrentAttemptId(null);
+    }
+    
+    setSocketConnected(true);
+    setLastConnectionTime(new Date());
+    setConnectionState('connected');
+    clearErrors();
+    
+    // Include WebSocket manager status in additional info
+    const wsStatus = webSocketManager.getConnectionStatus();
+    const enhancedInfo = {
+      ...additionalInfo,
+      webSocketManagerStatus: wsStatus
+    };
+    
+    console.log(`✅ ${context} connection successful`, enhancedInfo);
   };
 
   // Retry connection function
   const retryConnection = async () => {
     clearErrors();
     setIsConnecting(true);
+    setConnectionState('retrying');
+    
+    // Start countdown for retry
+    setRetryCountdown(3);
+    const countdownInterval = setInterval(() => {
+      setRetryCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownInterval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
     
     try {
       await authenticate();
@@ -102,6 +147,8 @@ export default function HomePage() {
       // Error will be handled by authenticate function
     } finally {
       setIsConnecting(false);
+      clearInterval(countdownInterval);
+      setRetryCountdown(0);
     }
   };
 
@@ -115,18 +162,34 @@ export default function HomePage() {
 
     try {
       setIsConnecting(true);
+      setConnectionState('connecting');
       clearErrors();
+      
+      // Start monitoring authentication attempt
+      const authAttemptId = connectionMonitor.startAttempt('authentication');
+      setCurrentAttemptId(authAttemptId);
       
       const newSession = await nakamaClient.authenticateDevice(deviceId, true);
       
+      // Mark authentication success
+      connectionMonitor.markSuccess(authAttemptId, { 
+        userId: newSession.user_id,
+        username: newSession.username 
+      });
+      
       // Log WebSocket connection details for debugging
       console.log(`🔗 WebSocket Connection Details:`);
-      console.log(`   - Protocol: ${nakamaClient.getWebSocketProtocol()}`);
+      console.log(`   - Protocol: ${webSocketManager.getCurrentProtocol()}`);
       console.log(`   - URL: ${nakamaClient.getWebSocketUrl()}`);
       
-      const newSocket = nakamaClient.createSocket();
+      // Use WebSocketManager to create secure socket
+      const newSocket = webSocketManager.createSecureSocket(newSession, true);
       const wsUrl = nakamaClient.getWebSocketUrl();
-      const wsProtocol = nakamaClient.getWebSocketProtocol();
+      const wsProtocol = webSocketManager.getCurrentProtocol();
+      
+      // Start monitoring WebSocket connection attempt
+      const wsAttemptId = connectionMonitor.startAttempt('websocket', wsUrl, wsProtocol);
+      setCurrentAttemptId(wsAttemptId);
       
       // Set up connection event handlers before connecting
       newSocket.onnotification = (notification: Notification) => {
@@ -148,11 +211,12 @@ export default function HomePage() {
 
       await newSocket.connect(newSession, true);
       
-      // Mark as connected after successful connection
-      setSocketConnected(true);
-      setLastConnectionTime(new Date());
-      clearErrors();
-      console.log("✅ WebSocket connected successfully");
+      // Mark WebSocket connection success
+      handleConnectionSuccess('websocket', { 
+        url: wsUrl, 
+        protocol: wsProtocol,
+        sessionId: newSession.token 
+      });
 
       setSession(newSession);
       setSocket(newSocket);
@@ -223,9 +287,22 @@ export default function HomePage() {
     if (socket && socketConnected) {
       setIsSearching(true);
       clearErrors();
+      
+      // Start monitoring matchmaking attempt
+      const matchAttemptId = connectionMonitor.startAttempt('matchmaking');
+      setCurrentAttemptId(matchAttemptId);
+      
       try {
         await socket.addMatchmaker("tictactoe", 2, 2);
         console.log("Searching for a match...");
+        
+        // Mark matchmaking request success (not the full match, just the request)
+        connectionMonitor.markSuccess(matchAttemptId, { 
+          action: 'matchmaker_request',
+          gameType: 'tictactoe',
+          players: 2 
+        });
+        setCurrentAttemptId(null);
       } catch (error) {
         console.error('Matchmaking failed:', error);
         setIsSearching(false);
@@ -303,8 +380,14 @@ export default function HomePage() {
   };
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen p-8 bg-gray-900 text-white">
-      <h1 className="text-4xl font-bold mb-8">LILA Tic-Tac-Toe</h1>
+    <WebSocketErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error('WebSocket Error Boundary triggered:', error, errorInfo);
+        handleConnectionError(error, 'websocket');
+      }}
+    >
+      <main className="flex flex-col items-center justify-center min-h-screen p-8 bg-gray-900 text-white">
+        <h1 className="text-4xl font-bold mb-8">LILA Tic-Tac-Toe</h1>
       
       {/* Connection Status */}
       {!session && !connectionError && (
@@ -326,6 +409,35 @@ export default function HomePage() {
           connectionAttempts={connectionAttempts}
           lastConnectionTime={lastConnectionTime}
         />
+        
+        {/* Enhanced Connection Status Indicator */}
+        <div className="mt-4">
+          <ConnectionStatusIndicator
+            status={connectionState}
+            protocol={webSocketManager.getCurrentProtocol()}
+            errorMessage={connectionError?.userMessage || errorMessage}
+            onRetry={retryConnection}
+            showProtocol={true}
+            showTroubleshooting={connectionState === 'error'}
+            retryCountdown={retryCountdown}
+          />
+        </div>
+
+        {/* WebSocket Manager Status (Development Only) */}
+        {process.env.NODE_ENV === 'development' && socketConnected && (
+          <div className="mt-2 p-2 bg-gray-800/50 rounded text-xs text-gray-400">
+            <div className="flex justify-between">
+              <span>WebSocket Protocol:</span>
+              <span className="text-green-400">{webSocketManager.getCurrentProtocol().toUpperCase()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Manager Status:</span>
+              <span className="text-blue-400">
+                {webSocketManager.getConnectionStatus().connected ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Legacy Error Message (for backward compatibility) */}
@@ -463,6 +575,16 @@ export default function HomePage() {
           <Leaderboard session={session} />
         </div>
       )}
+
+      {/* Debug Panel (Development Only) */}
+      {process.env.NODE_ENV === 'development' && (
+        <DebugPanel
+          monitor={connectionMonitor}
+          isVisible={showDebugPanel}
+          onToggle={() => setShowDebugPanel(!showDebugPanel)}
+        />
+      )}
     </main>
+    </WebSocketErrorBoundary>
   );
 }
