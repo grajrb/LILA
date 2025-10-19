@@ -1,13 +1,20 @@
 // client/app/nakama.ts
 import { Client, Socket, WebSocketAdapter } from "@heroiclabs/nakama-js";
 import { EnvironmentConfig } from "./utils/EnvironmentConfig";
+import { ServerKeyValidatorIntegration } from "./utils/ServerKeyValidatorIntegration";
 
 // Initialize environment configuration
 const envConfig = EnvironmentConfig.getInstance();
 const config = envConfig.getNakamaConfig();
 
+// Initialize server key validator
+const keyValidator = new ServerKeyValidatorIntegration();
+
 // Log configuration summary
 console.log(envConfig.getConfigSummary());
+
+// Validate server key configuration and log status
+keyValidator.logConfigurationStatus();
 
 // Create client with HTTP/HTTPS protocol (for REST API calls)
 // Use environment config to determine correct host, port, and SSL settings
@@ -62,9 +69,35 @@ enhancedClient.getConfigSummary = (): string => {
   return envConfig.getConfigSummary();
 };
 
+// Add server key validation methods
+enhancedClient.validateServerKey = () => {
+  return keyValidator.validateCurrentConfiguration();
+};
+
+enhancedClient.getMaskedServerKey = (): string => {
+  return keyValidator.getMaskedCurrentKey();
+};
+
+enhancedClient.isAuthenticationKeyError = (error: Error): boolean => {
+  return keyValidator.isAuthenticationKeyError(error);
+};
+
+enhancedClient.getValidationReport = () => {
+  return keyValidator.generateConfigurationReport();
+};
+
 // Enhanced connection testing with better error handling and Railway.app support
 const testConnection = async () => {
   try {
+    // Validate server key configuration before attempting connection
+    try {
+      keyValidator.validateBeforeAuthentication();
+      console.log('🔐 Server key validation passed');
+    } catch (validationError) {
+      console.error('❌ Server key validation failed:', validationError.message);
+      return; // Don't attempt connection with invalid key
+    }
+
     const healthUrl = `${envConfig.getHttpUrl()}/v2/healthcheck`;
     console.log(`🔍 Testing connection to: ${healthUrl}`);
     
@@ -97,6 +130,15 @@ const testConnection = async () => {
     }
   } catch (error) {
     console.error('❌ Failed to connect to Nakama server:', error);
+    
+    // Check if this might be a server key mismatch error
+    if (keyValidator.isAuthenticationKeyError(error as Error)) {
+      console.error('🔐 This appears to be a server key authentication error!');
+      console.error('💡 Server key mismatch detected. Please verify:');
+      console.error(`   - Client key: ${keyValidator.getMaskedCurrentKey()}`);
+      console.error('   - Server configuration matches client configuration');
+      console.error('   - Environment variables are set correctly');
+    }
     
     // Environment-specific troubleshooting tips
     console.log('📝 Troubleshooting tips:');
