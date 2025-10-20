@@ -45,6 +45,7 @@ echo "🎮 Starting Nakama server..."
 echo "🔑 Using server key: ${NAKAMA_SERVER_KEY:0:16}..."
 echo "🔧 Full startup command preview:"
 echo "   --session.server_key='${NAKAMA_SERVER_KEY:-defaultkey}'"
+echo "🔍 Environment variable check: NAKAMA_SERVER_KEY is ${#NAKAMA_SERVER_KEY} characters long"
 exec /nakama/nakama \
   --name nakama1 \
   --database.address "$DATABASE_URL" \
