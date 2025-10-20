@@ -67,17 +67,17 @@ fi
 
 echo "🛠 Effective server key passed to Nakama: ${NAKAMA_SERVER_KEY:-defaultkey}"
 exec /nakama/nakama \
-  --name nakama1 \
-  --database.address "$DATABASE_URL" \
-  --logger.level DEBUG \
-  --runtime.path /nakama/data/modules \
-  --runtime.js_entrypoint index.js \
-  --runtime.js_read_only_globals false \
-  --session.server_key "${NAKAMA_SERVER_KEY:-defaultkey}" \
+    --name nakama1 \
+    --database.address "$DATABASE_URL" \
+    --logger.level DEBUG \
+    --runtime.path /nakama/data/modules \
+    --runtime.js_entrypoint index.js \
+    --runtime.js_read_only_globals false \
+    --server.key "${NAKAMA_SERVER_KEY:-defaultkey}" \
     --socket.server_key "${NAKAMA_SERVER_KEY:-defaultkey}" \
-  --console.username "${NAKAMA_CONSOLE_USERNAME:-admin}" \
-  --console.password "${NAKAMA_CONSOLE_PASSWORD:-password}" \
-  --socket.port "$PORT" \
-  --socket.address 0.0.0.0 \
-  --console.port "$PORT" \
-  --console.address 0.0.0.0
+    --console.username "${NAKAMA_CONSOLE_USERNAME:-admin}" \
+    --console.password "${NAKAMA_CONSOLE_PASSWORD:-password}" \
+    --socket.port "$PORT" \
+    --socket.address 0.0.0.0 \
+    --console.port "$PORT" \
+    --console.address 0.0.0.0
