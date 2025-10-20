@@ -74,6 +74,7 @@ exec /nakama/nakama \
   --runtime.js_entrypoint index.js \
   --runtime.js_read_only_globals false \
   --session.server_key "${NAKAMA_SERVER_KEY:-defaultkey}" \
+    --socket.server_key "${NAKAMA_SERVER_KEY:-defaultkey}" \
   --console.username "${NAKAMA_CONSOLE_USERNAME:-admin}" \
   --console.password "${NAKAMA_CONSOLE_PASSWORD:-password}" \
   --socket.port "$PORT" \
