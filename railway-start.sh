@@ -42,10 +42,11 @@ echo "✅ Database setup completed"
 
 # Start Nakama server
 echo "🎮 Starting Nakama server..."
+echo "🔑 Using server key: ${NAKAMA_SERVER_KEY:0:16}..."
 exec /nakama/nakama \
   --name nakama1 \
   --database.address "$DATABASE_URL" \
-  --logger.level INFO \
+  --logger.level DEBUG \
   --runtime.path /nakama/data/modules \
   --runtime.js_entrypoint index.js \
   --runtime.js_read_only_globals false \
@@ -53,4 +54,6 @@ exec /nakama/nakama \
   --console.username "${NAKAMA_CONSOLE_USERNAME:-admin}" \
   --console.password "${NAKAMA_CONSOLE_PASSWORD:-password}" \
   --socket.port "$PORT" \
-  --console.port "$PORT"
+  --socket.address 0.0.0.0 \
+  --console.port "$PORT" \
+  --console.address 0.0.0.0
