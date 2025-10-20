@@ -63,6 +63,34 @@ export class AuthenticationManager {
     this.authenticationStatus.lastAttemptTime = new Date();
 
     try {
+      // Diagnostic: manual raw fetch comparison before SDK call (only in browser)
+      if (typeof window !== 'undefined' && (window as any).__nakama_diag_once !== true) {
+        (window as any).__nakama_diag_once = true;
+        try {
+          const cfg = this.environmentConfig.getNakamaConfig();
+          const idForDiag = (deviceId || this.generateDeviceId()).slice(0, 32);
+          const composedKey = cfg.serverKey + ':';
+          const base64 = btoa(composedKey);
+          console.log('[🔍 RawAuthDiag] Testing manual fetch against /v2/account/authenticate/device with serverKey length', cfg.serverKey.length);
+          const resp = await fetch(`${this.environmentConfig.getHttpUrl()}/v2/account/authenticate/device?create=true`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Basic ${base64}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id: idForDiag })
+          });
+          const text = await resp.text();
+          console.log('[🔍 RawAuthDiag] status:', resp.status, 'ok:', resp.ok, 'body snippet:', text.substring(0, 140));
+          if (resp.status === 401) {
+            console.warn('[🔍 RawAuthDiag] 401 with manual fetch. This strongly indicates server rejected provided serverKey.');
+          } else if (resp.ok) {
+            console.log('[🔍 RawAuthDiag] Manual fetch succeeded; mismatch may be in SDK usage or timing.');
+          }
+        } catch (diagErr) {
+          console.warn('[🔍 RawAuthDiag] Diagnostic fetch threw error:', diagErr);
+        }
+      }
       // Validate server key before attempting authentication
       const keyValidation = await this.validateServerKey();
       if (!keyValidation) {
@@ -83,7 +111,10 @@ export class AuthenticationManager {
       this.currentSession = session;
       this.authenticationStatus.isAuthenticated = true;
       this.authenticationStatus.lastError = undefined;
-      this.authenticationStatus.sessionExpiry = new Date(session.expires_at * 1000);
+      // Some versions/types may have expires_at undefined; guard it
+      if (typeof (session as any).expires_at === 'number') {
+        this.authenticationStatus.sessionExpiry = new Date((session as any).expires_at * 1000);
+      }
 
       const duration = Date.now() - startTime;
       this.recordAttempt(true, undefined, duration);
@@ -99,7 +130,8 @@ export class AuthenticationManager {
       const errorMessage = error instanceof Error ? error.message : String(error);
       
       // Classify the authentication error
-      const errorDetails = this.classifyAuthenticationError(error);
+  const castError: Error = error instanceof Error ? error : new Error(String(error));
+  const errorDetails = this.classifyAuthenticationError(castError);
       
       this.authenticationStatus.isAuthenticated = false;
       this.authenticationStatus.lastError = errorMessage;
@@ -159,7 +191,8 @@ export class AuthenticationManager {
     // Update session validity if we have a session
     if (this.currentSession) {
       const now = Date.now() / 1000;
-      const isExpired = now >= this.currentSession.expires_at;
+  const expiresAt = (this.currentSession as any).expires_at;
+  const isExpired = typeof expiresAt === 'number' ? now >= expiresAt : false;
       
       if (isExpired && this.authenticationStatus.isAuthenticated) {
         console.log('⚠️ Session has expired');
@@ -246,7 +279,8 @@ export class AuthenticationManager {
     }
 
     const now = Date.now() / 1000;
-    return now < this.currentSession.expires_at;
+  const expiresAt = (this.currentSession as any).expires_at;
+  return typeof expiresAt === 'number' ? now < expiresAt : false;
   }
 
   /**
