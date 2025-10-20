@@ -43,6 +43,8 @@ echo "✅ Database setup completed"
 # Start Nakama server
 echo "🎮 Starting Nakama server..."
 echo "🔑 Using server key: ${NAKAMA_SERVER_KEY:0:16}..."
+echo "🔧 Full startup command preview:"
+echo "   --session.server_key='${NAKAMA_SERVER_KEY:-defaultkey}'"
 exec /nakama/nakama \
   --name nakama1 \
   --database.address "$DATABASE_URL" \
