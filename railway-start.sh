@@ -44,7 +44,7 @@ echo "✅ Database setup completed"
 echo "🎮 Starting Nakama server..."
 echo "🔑 Using server key: ${NAKAMA_SERVER_KEY:0:16}..."
 echo "🔧 Full startup command preview:"
-echo "   --session.server_key='${NAKAMA_SERVER_KEY:-defaultkey}'"
+echo "   --server.key='${NAKAMA_SERVER_KEY:-defaultkey}'"
 echo "🔍 Environment variable check: NAKAMA_SERVER_KEY is ${#NAKAMA_SERVER_KEY} characters long"
 
 # Additional diagnostics for server key issues
@@ -73,7 +73,6 @@ exec /nakama/nakama \
     --runtime.path /nakama/data/modules \
     --runtime.js_entrypoint index.js \
     --runtime.js_read_only_globals false \
-    --server.key "${NAKAMA_SERVER_KEY:-defaultkey}" \
     --socket.server_key "${NAKAMA_SERVER_KEY:-defaultkey}" \
     --console.username "${NAKAMA_CONSOLE_USERNAME:-admin}" \
     --console.password "${NAKAMA_CONSOLE_PASSWORD:-password}" \

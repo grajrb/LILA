@@ -132,4 +132,48 @@ Created as part of the LILA Engineering technical assessment.
 ---
 
 **Ready to play? Deploy the game and challenge your friends to a match!** 🎮
+
+## 🔐 Authentication & Server Key Troubleshooting
+
+Nakama requires the server key (`socket.server_key`) for device/custom/email authentication endpoints when using Basic auth. Common pitfalls and fixes:
+
+### Symptoms
+
+- 401 Unauthorized when hitting `/v2/account/authenticate/device?create=true` despite correct endpoint and headers.
+- Works with `defaultkey` but fails with a custom 32–64 character key.
+
+### Checklist
+
+1. Environment variable actually injected: log `${NAKAMA_SERVER_KEY}` length at container start.
+2. Startup flag: Use `--socket.server_key "${NAKAMA_SERVER_KEY}"`. The flag `--server.key` is not recognized in OSS Nakama (server source checks `socket.server_key`).
+3. No stray whitespace: Ensure the value has no hidden trailing spaces/newlines. In Railway UI re‑type the key and save.
+4. Basic Auth header format: `Authorization: Basic base64(serverKey + ":")` (username = server key, password empty). Do not include extra colon characters.
+5. Device ID length: Must be 10–128 bytes (`flag-switch-test` is OK; shorter IDs will fail with 400, not 401).
+6. Ensure HTTPS terminates before Nakama; don’t enable direct SSL in Nakama unless you supply cert/key pair.
+
+### PowerShell Test Snippet
+
+```powershell
+$serverKey = "YOURKEYHERE:"  # colon required to represent empty password
+$b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($serverKey))
+Invoke-WebRequest -Uri "https://YOUR_HOST/v2/account/authenticate/device?create=true" -Method POST -Headers @{"Authorization"="Basic $b64"; "Content-Type"="application/json"} -Body '{"id":"integration-test-12345"}'
+```
+
+### If Still 401
+
+- Try a simpler key (alphanumeric, 32 chars) to rule out unseen encoding issues.
+- Inspect server logs around the request for `Server key invalid` messages thrown by the auth interceptor.
+- Verify only one instance; multiple replicas with divergent keys will invalidate requests randomly.
+- Regenerate a new key and redeploy; avoid shell quoting mistakes.
+
+### Planned Cleanup
+
+- Remove verbose key diagnostics once stable.
+- Rotate away from default console credentials (`admin/password`) before production.
+
+### Root Cause (Current Investigation)
+
+Early failures traced to an incorrect startup flag (`--session.server_key` / `--server.key`) which Nakama did not use for Basic auth interception. The correct parameter is `--socket.server_key`; once aligned, custom keys should function. If failures persist after correction, focus on whitespace/encoding or multi-instance drift.
+
+---
 " 
