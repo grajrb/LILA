@@ -8,9 +8,9 @@
   - Add generateKeyReport method for debugging and configuration validation
   - _Requirements: 1.2, 2.2_
 
-- [ ] 2. Create Authentication Manager with enhanced error handling
+- [x] 2. Create Authentication Manager with enhanced error handling
 
-  - [ ] 2.1 Build core Authentication Manager class
+  - [x] 2.1 Build core Authentication Manager class
 
     - Write AuthenticationManager class with device authentication methods
     - Implement validateServerKey method to check key validity before authentication
@@ -18,7 +18,7 @@
     - Create retryAuthentication method with intelligent retry logic
     - _Requirements: 1.1, 1.4, 2.1_
 
-  - [ ] 2.2 Add authentication error classification
+  - [x] 2.2 Add authentication error classification
 
     - Implement error analysis to distinguish server key mismatches from other failures
     - Add specific error handling for 401 Unauthorized responses
@@ -26,7 +26,7 @@
     - Add developer-focused debugging information for configuration issues
     - _Requirements: 1.4, 2.2_
 
-  - [ ] 2.3 Write unit tests for Authentication Manager
+  - [x] 2.3 Write unit tests for Authentication Manager
 
     - Test server key validation logic with valid and invalid keys
     - Test authentication retry mechanisms with different error scenarios
@@ -34,9 +34,9 @@
     - Test authentication status tracking and reporting
     - _Requirements: 1.1, 2.2_
 
-- [ ] 3. Implement Environment Synchronizer for configuration management
+- [x] 3. Implement Environment Synchronizer for configuration management
 
-  - [ ] 3.1 Create Environment Synchronizer component
+  - [x] 3.1 Create Environment Synchronizer component
 
     - Write EnvironmentSynchronizer class to compare Railway and Vercel configurations
     - Implement checkEnvironmentSync method to detect configuration mismatches
@@ -44,7 +44,7 @@
     - Create generateSyncReport method for configuration status reporting
     - _Requirements: 1.5, 2.3, 3.1_
 
-  - [ ] 3.2 Add environment variable validation
+  - [x] 3.2 Add environment variable validation
 
     - Implement validation for NAKAMA_SERVER_KEY consistency across environments
     - Add checks for missing or malformed environment variables
@@ -52,84 +52,111 @@
     - Add environment-specific configuration handling (dev vs production)
     - _Requirements: 2.3, 2.4, 3.4_
 
-  - [ ]\* 3.3 Write tests for Environment Synchronizer
+  - [x] 3.3 Write tests for Environment Synchronizer
+
     - Test environment variable comparison logic
     - Test missing configuration detection
     - Test synchronization report generation
     - Test environment-specific validation rules
     - _Requirements: 2.3, 3.1_
 
-- [ ] 4. Enhance Nakama client integration with authentication validation
+- [x] 4. Create UI components for authentication status and debugging
 
-  - [ ] 4.1 Update Nakama client initialization
+  - [x] 4.1 Build debug panel component
 
-    - Modify nakama.ts to use Authentication Manager for device authentication
-    - Add server key validation before attempting authentication
-    - Implement proper error handling for authentication failures
-    - Add configuration logging for debugging authentication issues
-    - _Requirements: 1.1, 1.3, 2.1_
-
-  - [ ] 4.2 Add authentication status monitoring
-
-    - Create authentication status indicators in the UI
-    - Add real-time feedback for authentication attempts
-    - Implement retry buttons for failed authentication
-    - Add configuration validation results display
-    - _Requirements: 1.4, 2.1, 2.5_
-
-  - [ ]\* 4.3 Write integration tests for Nakama client authentication
-    - Test complete authentication flow with valid server keys
-    - Test authentication failure handling with invalid keys
-    - Test retry mechanisms and error recovery
-    - Test UI feedback and status indicators
-    - _Requirements: 1.1, 1.3_
-
-- [ ] 5. Create configuration validation and debugging tools
-
-  - [ ] 5.1 Build configuration validation utility
-
-    - Create utility to validate all required environment variables
-    - Add server key consistency checks between client and server
-    - Implement configuration health check endpoint or method
-    - Add detailed configuration reporting for troubleshooting
-    - _Requirements: 2.2, 2.3, 3.2_
-
-  - [ ] 5.2 Add development debugging tools
-
-    - Create debug panel showing current authentication configuration
-    - Add server key validation status display (with masked values)
-    - Implement authentication attempt history and logging
-    - Add environment synchronization status indicators
+    - Create DebugPanel component showing connection metrics and logs
+    - Add real-time monitoring of authentication attempts
+    - Implement export functionality for debugging data
+    - Add tabbed interface for metrics, logs, and debug information
     - _Requirements: 2.1, 2.2, 3.4_
 
-  - [ ]\* 5.3 Write tests for configuration validation tools
-    - Test environment variable validation logic
-    - Test configuration health checks
-    - Test debug panel functionality
-    - Test authentication history tracking
+  - [x] 4.2 Create server key status component
+
+    - Build ServerKeyStatus component with validation display
+    - Add masked server key display for security
+    - Implement validation status indicators with error details
+    - Add recommendations for configuration fixes
+    - _Requirements: 1.4, 2.2, 2.5_
+
+  - [x] 4.3 Build connection status indicators
+
+    - Create ConnectionStatus component with error classification
+    - Add retry functionality with countdown timers
+    - Implement user-friendly error messages and technical details
+    - Add connection state management and visual indicators
+    - _Requirements: 1.4, 2.1, 2.5_
+
+- [ ] 5. Integrate Authentication Manager with Nakama client
+
+  - [ ] 5.1 Replace direct authentication calls with Authentication Manager
+
+    - Update page.tsx to use AuthenticationManager.authenticateDevice()
+    - Replace manual error handling with AuthenticationManager error classification
+    - Add server key validation before authentication attempts
+    - Implement proper retry logic using AuthenticationManager.retryAuthentication()
+    - _Requirements: 1.1, 1.3, 2.1_
+
+  - [ ] 5.2 Add authentication status monitoring to main application
+
+    - Integrate AuthenticationManager status into connection state management
+    - Display authentication attempt history in debug panel
+    - Add server key validation results to UI components
+    - Implement real-time authentication status updates
+    - _Requirements: 1.4, 2.1, 2.5_
+
+  - [ ]\* 5.3 Write integration tests for Authentication Manager usage
+    - Test complete authentication flow with AuthenticationManager
+    - Test error handling and retry mechanisms in main application
+    - Test UI updates based on authentication status changes
+    - Test server key validation integration
+    - _Requirements: 1.1, 1.3_
+
+- [ ] 6. Add comprehensive configuration validation and reporting
+
+  - [ ] 6.1 Create configuration validation utility
+
+    - Build ConfigurationValidator class combining all validation components
+    - Add comprehensive environment variable validation
+    - Implement configuration health check with detailed reporting
+    - Add automated configuration fix suggestions
+    - _Requirements: 2.2, 2.3, 3.2_
+
+  - [ ] 6.2 Integrate Environment Synchronizer into main application
+
+    - Add environment synchronization status to debug panel
+    - Display configuration validation results in UI
+    - Implement configuration mismatch warnings and recommendations
+    - Add environment-specific configuration guidance
+    - _Requirements: 2.3, 2.4, 3.4_
+
+  - [ ]\* 6.3 Write tests for configuration validation integration
+    - Test configuration validation in different environments
+    - Test environment synchronization reporting
+    - Test configuration fix suggestions and guidance
+    - Test integration with existing UI components
     - _Requirements: 2.2, 3.2_
 
-- [ ] 6. Update error handling and user feedback
+- [ ] 7. Enhance error handling and user guidance
 
-  - [ ] 6.1 Enhance error boundary for authentication failures
+  - [ ] 7.1 Update error boundaries for authentication failures
 
-    - Update existing error boundaries to handle authentication errors
-    - Add specific error messages for server key mismatch scenarios
-    - Implement user-friendly guidance for resolving configuration issues
-    - Add developer mode with detailed error information
+    - Enhance WebSocketErrorBoundary to handle authentication errors
+    - Add specific error recovery for server key mismatch scenarios
+    - Implement fallback UI for authentication configuration issues
+    - Add developer mode with detailed technical information
     - _Requirements: 1.4, 2.2, 2.4_
 
-  - [ ] 6.2 Add authentication troubleshooting guide
+  - [ ] 7.2 Create authentication troubleshooting guide
 
-    - Create in-app troubleshooting steps for authentication failures
-    - Add links to configuration documentation
-    - Implement automated configuration validation suggestions
-    - Add contact information for technical support
+    - Build in-app troubleshooting component for authentication failures
+    - Add step-by-step configuration validation and fix guidance
+    - Implement automated environment variable checking
+    - Add links to documentation and support resources
     - _Requirements: 2.2, 2.4, 3.4_
 
-  - [ ]\* 6.3 Write tests for error handling and user feedback
+  - [ ]\* 7.3 Write tests for enhanced error handling
     - Test error boundary behavior with authentication failures
-    - Test user feedback messages for different error scenarios
-    - Test troubleshooting guide functionality
-    - Test automated validation suggestions
+    - Test troubleshooting guide functionality and recommendations
+    - Test automated configuration validation and suggestions
+    - Test user guidance for different error scenarios
     - _Requirements: 1.4, 2.2_
