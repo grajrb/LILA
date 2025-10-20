@@ -61,6 +61,15 @@ FIRST_FOUR=${NAKAMA_SERVER_KEY:0:4}
 LAST_FOUR=${NAKAMA_SERVER_KEY: -4}
 echo "🔐 Masked server key for verification: ${FIRST_FOUR}********${LAST_FOUR}"
 
+# Hex and base64 diagnostics to detect hidden characters (spaces/newlines)
+if command -v od >/dev/null 2>&1; then
+    echo "🔎 Server key hex bytes: $(echo -n "$NAKAMA_SERVER_KEY" | od -An -tx1 | tr -s ' ' | tr '\n' ' ')"
+fi
+echo "🔎 Server key base64: $(echo -n "$NAKAMA_SERVER_KEY" | base64 2>/dev/null || echo 'base64 unavailable')"
+echo -n "$NAKAMA_SERVER_KEY" | wc -c | xargs echo "🔎 Byte length (wc -c):" || true
+
+echo -n "$NAKAMA_SERVER_KEY" | grep -q '\s' && echo "⚠️ Detected whitespace characters in server key!" || echo "✅ No whitespace detected in server key."
+
 if [ "${NAKAMA_SERVER_KEY}" = "defaultkey" ]; then
     echo "🚨 CRITICAL: NAKAMA_SERVER_KEY is set literally to 'defaultkey'. This indicates the env var did not inject. Verify Railway variable name EXACTLY matches 'NAKAMA_SERVER_KEY'."
 fi
